@@ -1,0 +1,1 @@
+"use client";import { Link2,Printer,ArrowUp } from "lucide-react";export function PageTools(){return <div className="pagetools"><button onClick={()=>navigator.clipboard.writeText(location.href)}><Link2/> Copiar enlace</button><button onClick={()=>print()}><Printer/> Imprimir / PDF</button><a href="#content"><ArrowUp/> Volver arriba</a></div>}
