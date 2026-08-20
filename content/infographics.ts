@@ -2,11 +2,11 @@ import type { InfographicPlacement } from "@/types/content";
 
 export const infographics = [
   {src:"/assets/assessment/01-executive-diagnostic.svg",title:"Diagnóstico ejecutivo",caption:"Síntesis del assessment",chapterSlug:"executive-summary"},
-  {src:"/assets/assessment/02-assessment-scope.svg",title:"Alcance del assessment",caption:"Perspectivas incluidas",chapterSlug:"methodology",sectionId:"approach"},
-  {src:"/assets/assessment/03-current-capabilities.svg",title:"Capacidades actuales",caption:"Fortalezas sobre las cuales construir",chapterSlug:"findings",sectionId:"strengths"},
-  {src:"/assets/assessment/04-reality-observed-iceberg.svg",title:"Realidad observada",caption:"Señales visibles y sistémicas",chapterSlug:"current-state",sectionId:"iceberg"},
-  {src:"/assets/assessment/05-root-causes.svg",title:"Causas raíz",caption:"Mapa de causas sistémicas",chapterSlug:"root-causes",sectionId:"map"},
-  {src:"/assets/assessment/06-value-stream-as-is.svg",title:"Value Stream AS-IS",caption:"Flujo actual",chapterSlug:"value-stream",sectionId:"asis"},
+  {src:"/assets/assessment/02-assessment-scope.svg",title:"Alcance del assessment",caption:"Perspectivas incluidas",chapterSlug:"methodology"},
+  {src:"/assets/assessment/03-current-capabilities.svg",title:"Capacidades actuales",caption:"Fortalezas sobre las cuales construir",chapterSlug:"findings"},
+  {src:"/assets/assessment/04-reality-observed-iceberg.svg",title:"Realidad observada",caption:"Señales visibles y sistémicas",chapterSlug:"current-state"},
+  {src:"/assets/assessment/05-root-causes.svg",title:"Causas sistémicas probables",caption:"Mapa de inferencias soportadas",chapterSlug:"root-causes"},
+  {src:"/assets/assessment/06-value-stream-as-is.svg",title:"Value Stream AS-IS",caption:"Flujo actual",chapterSlug:"value-stream"},
   {src:"/assets/assessment/07-to-be-value-stream.svg",title:"Value Stream TO-BE",caption:"Hilo conductor de valor",chapterSlug:"operating-model",sectionId:"chain"},
   {src:"/assets/assessment/08-product-operating-model.svg",title:"Product Operating Model",caption:"Loop compartido",chapterSlug:"operating-model",sectionId:"loop"},
   {src:"/assets/assessment/09-what-must-change.svg",title:"Qué debe cambiar",caption:"Principios del sistema",chapterSlug:"design-principles"},
