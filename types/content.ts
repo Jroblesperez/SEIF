@@ -115,6 +115,86 @@ export type ArtifactRelationship = {
   source:SourceReference;
   validationStatus:ValidationStatus;
 };
+export type DiscoveryCompletenessDimension = HowDimension|"EVIDENCE QUALITY"|"EXIT / DECISION CRITERIA"|"FEEDBACK LOOP";
+export type DiscoveryConceptKind = "TRIGGER"|"SIGNAL"|"PROBLEM / OPPORTUNITY"|"FRAMING"|"ASSUMPTION"|"HYPOTHESIS"|"RESEARCH"|"EXPERIMENT"|"EVIDENCE"|"SYNTHESIS"|"DECISION"|"LEARNING";
+export type DiscoveryConcept = {
+  id:string;
+  kind:DiscoveryConceptKind;
+  title:string;
+  purpose:string;
+  trigger?:string;
+  inputs?:string[];
+  activities?:string[];
+  outputs?:string[];
+  roles?:string[];
+  artifacts?:string[];
+  evidenceExpected?:string[];
+  decisionEnabled?:string;
+  metric?:string;
+  cadence?:string;
+  toolRelationship?:string;
+  sourceLocators:SourceReference[];
+  contentClass:ContentClass;
+  completeness:Partial<Record<DiscoveryCompletenessDimension,CompletenessStatus>>;
+};
+export type DiscoveryFlowConnection = {
+  from:string;
+  to:string;
+  status:"SUPPORTED CONNECTION"|"PARTIAL CONNECTION"|"MISSING CONNECTION";
+  rationale:string;
+  source?:SourceReference;
+};
+export type DiscoveryEvidenceTerm = {
+  term:"ASSUMPTION"|"HYPOTHESIS"|"EVIDENCE"|"INSIGHT"|"DECISION";
+  definition?:string;
+  qualityModel?:string[];
+  sourceStatus:CompletenessStatus;
+  source?:SourceReference;
+};
+export type DiscoveryGate = {
+  id:string;
+  decision:string;
+  trigger:string;
+  inputs:string[];
+  evidenceRequired:string[];
+  participants?:string[];
+  decisionOwner?:string;
+  possibleOutputs:string[];
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type DiscoveryTechnique = {
+  id:string;
+  name:string;
+  purpose:string;
+  whenUseful?:string;
+  input?:string[];
+  output?:string[];
+  evidenceGenerated?:string;
+  example?:string;
+  source:SourceReference;
+};
+export type DiscoveryCadence = {
+  name:string;
+  cadenceType:"CONTINUOUS"|"EVENT-DRIVEN"|"SCHEDULED"|"GATE";
+  purpose:string;
+  participants?:string[];
+  source:SourceReference;
+};
+export type ArtifactUse = {
+  artifactId:string;
+  artifactName:string;
+  relationship:"CREATES"|"UPDATES"|"READS"|"SOURCE TERMINOLOGY CONFLICT";
+  usage:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type AntiPatternAssessment = {
+  antiPattern:string;
+  status:"NOT PRESENT"|"SOURCE RISK"|"OPERATING MODEL RISK";
+  rationale:string;
+  source:SourceReference;
+};
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
   id:string;
@@ -175,6 +255,14 @@ export type Chapter = {
   decisionRights?:DecisionRight[];
   operatingArtifacts?:OperatingArtifact[];
   artifactRelationships?:ArtifactRelationship[];
+  discoveryConcepts?:DiscoveryConcept[];
+  discoveryFlowConnections?:DiscoveryFlowConnection[];
+  discoveryEvidenceModel?:DiscoveryEvidenceTerm[];
+  discoveryGates?:DiscoveryGate[];
+  discoveryTechniques?:DiscoveryTechnique[];
+  discoveryCadences?:DiscoveryCadence[];
+  artifactUses?:ArtifactUse[];
+  antiPatternAssessments?:AntiPatternAssessment[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };

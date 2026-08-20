@@ -7,6 +7,7 @@ const errors=[];
 const blockAFiles=fs.readdirSync(chapterDir).filter(name=>/^0[1-9]-.*\.ts$/.test(name)).sort();
 const blockBWave1Files=fs.readdirSync(chapterDir).filter(name=>/^1[01]-.*\.ts$/.test(name)).sort();
 const blockBWave2Files=fs.readdirSync(chapterDir).filter(name=>/^(17|20)-.*\.ts$/.test(name)).sort();
+const blockBWave3Files=fs.readdirSync(chapterDir).filter(name=>/^12-.*\.ts$/.test(name)).sort();
 
 function readChapter(file){
   const source=fs.readFileSync(path.join(chapterDir,file),"utf8");
@@ -18,9 +19,10 @@ function readChapter(file){
 const blockA=blockAFiles.map(readChapter);
 const blockBWave1=blockBWave1Files.map(readChapter);
 const blockBWave2=blockBWave2Files.map(readChapter);
+const blockBWave3=blockBWave3Files.map(readChapter);
 const legacySource=fs.readFileSync(path.join(chapterDir,"legacy.ts"),"utf8");
 const legacySlugs=[...legacySource.matchAll(/\{slug:"([^"]+)"/g)].map(match=>match[1]);
-const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...legacySlugs];
+const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...legacySlugs];
 const slugSet=new Set();
 for(const slug of allSlugs){
   if(slugSet.has(slug))errors.push(`Duplicate slug: ${slug}`);
@@ -89,6 +91,21 @@ for(const chapter of blockBWave2){
     }
   }
 }
+for(const chapter of blockBWave3){
+  if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
+  if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
+  if(!chapter.operatingConcepts?.length||!chapter.discoveryConcepts?.length)errors.push(`${chapter.slug}: missing discovery operating model`);
+  for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
+  for(const section of chapter.sections){
+    if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
+    if(!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing section source locator`);
+    for(const block of section.blocks??[]){
+      const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;
+      if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);
+      if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`);
+    }
+  }
+}
 
 const designPrinciples=blockBWave1.find(chapter=>chapter.slug==="design-principles");
 const operatingModel=blockBWave1.find(chapter=>chapter.slug==="operating-model");
@@ -143,6 +160,38 @@ if(jiraSections.some(section=>section.contentClass!=="recommendation"))errors.pu
 const artifactValidations=new Set([...(artifacts?.clientValidations??[]),...(artifacts?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
 for(const id of ["CL-04","CL-10"]){if(!artifactValidations.has(id))errors.push(`artifacts: missing contextual ${id}`)}
 
+const discovery=blockBWave3.find(chapter=>chapter.slug==="discovery");
+if(blockBWave3Files.length!==1||!discovery)errors.push("Block B Wave 3 must contain exactly Chapter 12");
+const ch12Volume=sourceVolume(discovery);
+if(JSON.stringify(ch12Volume)!==JSON.stringify({sections:54,paragraphs:656,listItems:180,tables:5}))errors.push(`Chapter 12 source coverage changed: ${JSON.stringify(ch12Volume)}`);
+const discoveryKinds=discovery?.discoveryConcepts?.map(concept=>concept.kind)??[];
+for(const kind of ["TRIGGER","SIGNAL","PROBLEM / OPPORTUNITY","FRAMING","ASSUMPTION","HYPOTHESIS","RESEARCH","EXPERIMENT","EVIDENCE","SYNTHESIS","DECISION","LEARNING"]){if(!discoveryKinds.includes(kind))errors.push(`discovery: missing source-supported concept ${kind}`)}
+const discoverySourceSequence=discovery?.sourceOperatingSequence?.map(stage=>stage.title)??[];
+if(JSON.stringify(discoverySourceSequence)!==JSON.stringify(["SIGNAL","FRAME","DISCOVER","DECIDE","VALIDATE","DELIVER","RELEASE","ADOPT","MEASURE & LEARN"]))errors.push("discovery: original nine-stage source sequence was changed");
+const discoveryStage=discovery?.operatingStages?.find(stage=>stage.canonicalStage==="DISCOVER");
+for(const term of ["SIGNAL","FRAME","DISCOVER","VALIDATE"]){if(!discoveryStage?.sourceSubStages.some(stage=>stage.title===term))errors.push(`discovery: source terminology ${term} missing from canonical mapping`)}
+const evidenceTerms=new Map((discovery?.discoveryEvidenceModel??[]).map(item=>[item.term,item]));
+for(const term of ["ASSUMPTION","HYPOTHESIS","EVIDENCE","INSIGHT","DECISION"]){if(!evidenceTerms.has(term))errors.push(`discovery: missing evidence term ${term}`)}
+if(evidenceTerms.get("INSIGHT")?.sourceStatus!=="SOURCE MISSING"||evidenceTerms.get("INSIGHT")?.definition)errors.push("discovery: INSIGHT must remain SOURCE MISSING");
+if(JSON.stringify(evidenceTerms.get("EVIDENCE")?.qualityModel)!==JSON.stringify(["Nivel A — Comportamiento observado","Nivel B — Evidencia directa del usuario","Nivel C — Evidencia comercial/operacional","Nivel D — Opinión / hipótesis interna; origen válido, no evidencia suficiente de problema"]))errors.push("discovery: source evidence hierarchy A–D changed");
+const gateDecisions=discovery?.discoveryGates?.map(gate=>gate.decision)??[];
+if(JSON.stringify(gateDecisions)!==JSON.stringify(["PROCEED","ADJUST","EXPLORE MORE","STOP"])||(discovery?.discoveryGates??[]).some(gate=>gate.validationStatus!=="pending"||!gate.source?.locator))errors.push("discovery: decision gates must preserve source outputs and pending authority");
+const roleIds=new Set(roles?.operatingRoles?.map(role=>role.id));
+if((discovery?.operatingRoles??[]).some(role=>!roleIds.has(role.id)||role.mappingStatus!=="ROLE MAPPING PENDING"))errors.push("discovery: role integration must reuse Wave 2 role IDs and remain pending mapping");
+const artifactCatalogIds=new Set(artifacts?.operatingArtifacts?.map(artifact=>artifact.id));
+for(const use of discovery?.artifactUses??[]){if(!use.artifactId.startsWith("source-")&&!artifactCatalogIds.has(use.artifactId))errors.push(`discovery: unknown artifact reference ${use.artifactId}`)}
+for(const name of ["Signal","Opportunity Card","Evidence Map"]){if(!discovery?.artifactUses?.some(use=>use.artifactName===name))errors.push(`discovery: missing explicit artifact use ${name}`)}
+if((discovery?.artifactUses??[]).some(use=>["Outcome Card","Bet Card","Learning Card","Decision Log"].includes(use.artifactName)))errors.push("discovery: artifacts not explicitly named by Chapter 12 must not be asserted as direct uses");
+if((discovery?.discoveryTechniques??[]).length!==10)errors.push("discovery: expected 10 source-supported technique groups");
+if((discovery?.discoveryCadences??[]).some(item=>!item.source?.locator)||!(discovery?.discoveryCadences??[]).some(item=>item.cadenceType==="CONTINUOUS"))errors.push("discovery: cadence must preserve continuous activity and locators");
+if((discovery?.antiPatternAssessments??[]).length!==9||(discovery?.antiPatternAssessments??[]).some(item=>!item.source?.locator))errors.push("discovery: anti-pattern assessment incomplete");
+const feedbackRisk=discovery?.antiPatternAssessments?.find(item=>item.antiPattern==="Customer feedback arriving only after release");
+if(feedbackRisk?.status!=="SOURCE RISK")errors.push("discovery: late customer feedback must remain visible as a source risk");
+const discoveryValidations=new Set([...(discovery?.clientValidations??[]),...(discovery?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-06","CL-07","CL-09","CL-10","CL-11"]){if(!discoveryValidations.has(id))errors.push(`discovery: missing contextual ${id}`)}
+const discoveryText=JSON.stringify(discovery);
+if(/Jira Product Discovery|JPD project|custom field|issue type|workflow/i.test(discoveryText))errors.push("discovery: premature JPD/Jira architecture detected");
+
 const maturity=blockA.find(chapter=>chapter.slug==="maturity");
 if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
 if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
@@ -174,7 +223,8 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
 console.log(`Wave 1 source coverage: Chapter 10 ${JSON.stringify(ch10Volume)}; Chapter 11 ${JSON.stringify(ch11Volume)}.`);
 console.log(`Wave 2 source coverage: Chapter 17 ${JSON.stringify(ch17Volume)}; Chapter 20 ${JSON.stringify(ch20Volume)}.`);
+console.log(`Wave 3 source coverage: Chapter 12 ${JSON.stringify(ch12Volume)}.`);
 console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);
