@@ -10,6 +10,7 @@ const blockBWave2Files=fs.readdirSync(chapterDir).filter(name=>/^(17|20)-.*\.ts$
 const blockBWave3Files=fs.readdirSync(chapterDir).filter(name=>/^12-.*\.ts$/.test(name)).sort();
 const blockBWave4Files=fs.readdirSync(chapterDir).filter(name=>/^13-.*\.ts$/.test(name)).sort();
 const blockBWave5Files=fs.readdirSync(chapterDir).filter(name=>/^14-.*\.ts$/.test(name)).sort();
+const blockBWave6Files=fs.readdirSync(chapterDir).filter(name=>/^(15|16)-.*\.ts$/.test(name)).sort();
 
 function readChapter(file){
   const source=fs.readFileSync(path.join(chapterDir,file),"utf8");
@@ -24,9 +25,10 @@ const blockBWave2=blockBWave2Files.map(readChapter);
 const blockBWave3=blockBWave3Files.map(readChapter);
 const blockBWave4=blockBWave4Files.map(readChapter);
 const blockBWave5=blockBWave5Files.map(readChapter);
+const blockBWave6=blockBWave6Files.map(readChapter);
 const legacySource=fs.readFileSync(path.join(chapterDir,"legacy.ts"),"utf8");
 const legacySlugs=[...legacySource.matchAll(/\{slug:"([^"]+)"/g)].map(match=>match[1]);
-const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...blockBWave5.map(chapter=>chapter.slug),...legacySlugs];
+const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...blockBWave5.map(chapter=>chapter.slug),...blockBWave6.map(chapter=>chapter.slug),...legacySlugs];
 const slugSet=new Set();
 for(const slug of allSlugs){
   if(slugSet.has(slug))errors.push(`Duplicate slug: ${slug}`);
@@ -129,6 +131,21 @@ for(const chapter of blockBWave5){
   if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
   if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
   if(!chapter.operatingConcepts?.length||!chapter.deliveryConcepts?.length)errors.push(`${chapter.slug}: missing Delivery operating model`);
+  for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
+  for(const section of chapter.sections){
+    if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
+    if(!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing section source locator`);
+    for(const block of section.blocks??[]){
+      const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;
+      if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);
+      if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`);
+    }
+  }
+}
+for(const chapter of blockBWave6){
+  if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
+  if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
+  if(!chapter.operatingConcepts?.length)errors.push(`${chapter.slug}: missing operating model`);
   for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
   for(const section of chapter.sections){
     if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
@@ -293,6 +310,47 @@ if(!deliveryMaturity?.clientValidations?.some(item=>item.id==="CL-14"&&/Valoraci
 const deliveryModelText=JSON.stringify({objects:delivery?.deliveryObjects,concepts:delivery?.deliveryConcepts,decisions:delivery?.releaseDecisions,tooling:delivery?.deliveryTooling});
 if(/approved Jira hierarchy|mandatory workflow|custom field|issue type|quality gate approved|DORA target|individual productivity score/i.test(deliveryModelText))errors.push("delivery: unsupported Jira, workflow, quality or DORA claim detected");
 
+const adoption=blockBWave6.find(chapter=>chapter.slug==="adoption-growth");
+const learning=blockBWave6.find(chapter=>chapter.slug==="feedback-loop");
+if(blockBWave6Files.length!==2||!adoption||!learning)errors.push("Block B Wave 6 must contain exactly Chapters 15–16");
+const ch15Volume=sourceVolume(adoption),ch16Volume=sourceVolume(learning);
+if(JSON.stringify(ch15Volume)!==JSON.stringify({sections:56,paragraphs:673,listItems:143,tables:4}))errors.push(`Chapter 15 source coverage changed: ${JSON.stringify(ch15Volume)}`);
+if(JSON.stringify(ch16Volume)!==JSON.stringify({sections:67,paragraphs:810,listItems:197,tables:7}))errors.push(`Chapter 16 source coverage changed: ${JSON.stringify(ch16Volume)}`);
+const adoptionTerms=new Map((adoption?.adoptionSemantics??[]).map(item=>[item.term,item]));
+for(const term of ["AVAILABILITY","ACTIVATION","USAGE","ADOPTION","ADHERENCE","CUSTOMER AUTONOMY","CUSTOMER VALUE","RETENTION","EXPANSION","BUSINESS VALUE"]){if(!adoptionTerms.has(term))errors.push(`adoption: missing semantic distinction ${term}`)}
+if(adoptionTerms.get("USAGE")?.definition===adoptionTerms.get("CUSTOMER VALUE")?.definition)errors.push("adoption: Usage must not equal Customer Value");
+if((adoption?.adoptionConcepts??[]).length!==6)errors.push("adoption: expected six source-supported concepts");
+if(adoption?.timeToValue?.definition!=="Tiempo hasta que el usuario alcanza su primer criterio de éxito."||adoption?.timeToValue?.formula||adoption?.timeToValue?.owner||adoption?.timeToValue?.cadence||adoption?.timeToValue?.validationStatus!=="pending")errors.push("adoption: TTV must preserve source definition without invented formula, owner or cadence");
+const outcomeStatuses=(adoption?.customerOutcomeConnections??[]).map(item=>item.status);
+if(outcomeStatuses.filter(status=>status==="SUPPORTED").length!==4||outcomeStatuses.filter(status=>status==="PARTIAL").length!==1)errors.push("adoption: Outcome relationships must retain four supported and one partial connection");
+const controlRondas=adoption?.operatingExamples?.find(item=>item.name==="Control de Rondas");
+if(controlRondas?.classification!=="EXAMPLE"||!controlRondas?.details?.Outcome?.includes("SOURCE MISSING"))errors.push("adoption: Control de Rondas must remain an example with its source gap");
+if((adoption?.growthRelationships??[]).some(item=>item.classification==="SOURCE FACT"))errors.push("adoption: Growth relationships must not be presented as proven causality");
+if(adoption?.northStarSupport?.contentClass!=="hypothesis"||adoption?.northStarSupport?.supportStatus!=="PARTIAL"||adoption?.northStarSupport?.validationStatus!=="pending"||!adoption?.northStarSupport?.candidate.includes("NORTH STAR CANDIDATE"))errors.push("adoption: North Star must remain a partial H1 candidate pending validation");
+if((adoption?.adoptionLearningMetrics??[]).length!==15||(adoption?.adoptionLearningMetrics??[]).some(item=>item.baseline!=="SOURCE MISSING"||item.target!=="SOURCE MISSING"||item.validationStatus!=="pending"))errors.push("adoption: metrics require missing baselines/targets and pending validation");
+if((adoption?.learningCadences??[]).length!==4||(adoption?.antiPatternAssessments??[]).length!==10)errors.push("adoption: cadence or anti-pattern inventory incomplete");
+
+const chain=(learning?.signalLearningChain??[]).map(item=>item.element);
+if(JSON.stringify(chain)!==JSON.stringify(["SIGNAL","PATTERN","EVIDENCE","INSIGHT","LEARNING","DECISION"]))errors.push("learning: source signal-to-decision chain changed");
+if(evidenceTerms.get("INSIGHT")?.sourceStatus!=="SOURCE MISSING")errors.push("discovery: Chapter 12 INSIGHT gap was silently retrofitted");
+if((learning?.feedbackSignals??[]).length!==9||(learning?.learningConcepts??[]).length!==6)errors.push("learning: feedback signal or learning concept inventory incomplete");
+const learningDecisionNames=(learning?.learningDecisions??[]).map(item=>item.decision);
+if(JSON.stringify(learningDecisionNames)!==JSON.stringify(["SCALE","CONTINUE","ADJUST","EXPLORE","STOP"])||(learning?.learningDecisions??[]).some(item=>item.decisionOwner||item.validationStatus!=="pending"))errors.push("learning: decisions must preserve source terminology and pending authority");
+if((learning?.feedbackLoopConnections??[]).length!==5)errors.push("learning: feedback loop connection inventory incomplete");
+const learningArtifactNames=learning?.artifactUses?.map(item=>item.artifactName)??[];
+for(const name of ["Evidence Map","Learning Card","Decision Log","Customer Feedback Repository"]){if(!learningArtifactNames.includes(name))errors.push(`learning: missing source-supported artifact ${name}`)}
+for(const name of ["Outcome Card","Bet Card","Outcome Board"]){if(learningArtifactNames.includes(name))errors.push(`learning: unsupported direct artifact use ${name}`)}
+if((learning?.adoptionLearningMetrics??[]).length!==10||(learning?.adoptionLearningMetrics??[]).some(item=>item.baseline!=="SOURCE MISSING"||item.target!=="SOURCE MISSING"||item.validationStatus!=="pending"))errors.push("learning: metrics require missing baselines/targets and pending validation");
+if((learning?.learningCadences??[]).length!==6||(learning?.antiPatternAssessments??[]).length!==9)errors.push("learning: cadence or anti-pattern inventory incomplete");
+for(const chapter of [adoption,learning])if((chapter?.adoptionLearningTooling??[]).some(item=>item.validationStatus!=="pending"))errors.push(`${chapter?.slug}: tooling must remain pending logical recommendation/H1`);
+const adoptionValidations=new Set([...(adoption?.clientValidations??[]),...(adoption?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-06","CL-07","CL-08","CL-10","CL-11","CL-13","CL-15"]){if(!adoptionValidations.has(id))errors.push(`adoption: missing contextual ${id}`)}
+const learningValidations=new Set([...(learning?.clientValidations??[]),...(learning?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-07","CL-10","CL-11","CL-16"]){if(!learningValidations.has(id))errors.push(`learning: missing contextual ${id}`)}
+for(const [chapter,id] of [[adoption,"CL-15"],[learning,"CL-16"]]){const section=chapter?.sections?.find(item=>/Maturity|madurez/i.test(item.title));if(!section?.clientValidations?.some(item=>item.id===id&&/Valoración del assessment/i.test(item.subject)))errors.push(`${chapter?.slug}: maturity rating requires pending assessment validation context`)}
+const wave6ModelText=JSON.stringify({adoption:adoption?.adoptionConcepts,ttv:adoption?.timeToValue,growth:adoption?.growthRelationships,northStar:adoption?.northStarSupport,learning:learning?.learningConcepts,decisions:learning?.learningDecisions,tooling:[adoption?.adoptionLearningTooling,learning?.adoptionLearningTooling]});
+if(/approved North Star|official SEIF KPI|validated corporate metric|TTV SLA|Jira issue type|custom field|workflow configuration|ticket = feature/i.test(wave6ModelText))errors.push("Wave 6: unsupported North Star, TTV, ticket or tooling claim detected");
+
 const maturity=blockA.find(chapter=>chapter.slug==="maturity");
 if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
 if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
@@ -324,10 +382,11 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 + ${blockBWave5Files.length} Block B Wave 5 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 + ${blockBWave5Files.length} Block B Wave 5 + ${blockBWave6Files.length} Block B Wave 6 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
 console.log(`Wave 1 source coverage: Chapter 10 ${JSON.stringify(ch10Volume)}; Chapter 11 ${JSON.stringify(ch11Volume)}.`);
 console.log(`Wave 2 source coverage: Chapter 17 ${JSON.stringify(ch17Volume)}; Chapter 20 ${JSON.stringify(ch20Volume)}.`);
 console.log(`Wave 3 source coverage: Chapter 12 ${JSON.stringify(ch12Volume)}.`);
 console.log(`Wave 4 source coverage: Chapter 13 ${JSON.stringify(ch13Volume)}.`);
 console.log(`Wave 5 source coverage: Chapter 14 ${JSON.stringify(ch14Volume)}.`);
+console.log(`Wave 6 source coverage: Chapter 15 ${JSON.stringify(ch15Volume)}; Chapter 16 ${JSON.stringify(ch16Volume)}.`);
 console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);
