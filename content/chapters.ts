@@ -8,11 +8,14 @@ import { chapter as rootCauses } from "@/content/chapters/06-root-causes";
 import { chapter as maturity } from "@/content/chapters/07-maturity";
 import { chapter as wasteFriction } from "@/content/chapters/08-waste-friction";
 import { chapter as valueStream } from "@/content/chapters/09-value-stream";
+import { chapter as designPrinciples } from "@/content/chapters/10-design-principles";
+import { chapter as operatingModel } from "@/content/chapters/11-operating-model";
 import { legacyChapters } from "@/content/chapters/legacy";
 
 const blockA:Chapter[]=[executiveSummary,methodology,interviews,currentState,findings,rootCauses,maturity,wasteFriction,valueStream];
+const blockBWave1:Chapter[]=[designPrinciples,operatingModel];
 
-export const chapters:Chapter[]=[...blockA,...legacyChapters];
+export const chapters:Chapter[]=[...blockA,...blockBWave1,...legacyChapters];
 
 const slugs=new Set<string>();
 for(const chapter of chapters){

@@ -22,7 +22,32 @@ export type EditorialNotice = {
   detail:string;
 };
 export type ImpactSemantics = "OBSERVED IMPACT" | "INFERRED IMPACT" | "POTENTIAL RISK" | "UNREVIEWED";
-export type ClientValidation = { id:"CL-01"|"CL-02"|"CL-03"; subject:string; status:"CLIENT VALIDATION REQUIRED" };
+export type ClientValidationId = "CL-01"|"CL-02"|"CL-03"|"CL-04"|"CL-05"|"CL-06"|"CL-07"|"CL-08"|"CL-09"|"CL-10"|"CL-11"|"CL-12"|"CL-13";
+export type ClientValidation = { id:ClientValidationId; subject:string; status:"CLIENT VALIDATION REQUIRED" };
+export type CanonicalLayer = "STRATEGY / OUTCOMES"|"DISCOVER"|"DECIDE"|"DELIVER"|"ADOPT"|"LEARN"|"GOVERNANCE"|"ROLES"|"METRICS"|"TOOLING / JIRA"|"EVIDENCE"|"CONTINUOUS IMPROVEMENT"|"UNMAPPED";
+export type HowDimension = "WHAT"|"WHY"|"HOW"|"WHO"|"WHEN"|"INPUT"|"OUTPUT"|"ARTIFACT"|"DECISION"|"METRIC"|"TOOL"|"EXAMPLE";
+export type CompletenessStatus = "SOURCE COMPLETE"|"SOURCE PARTIAL"|"SOURCE MISSING";
+export type OperatingConcept = {
+  id:string;
+  title:string;
+  canonicalLayers:CanonicalLayer[];
+  sourceChapters:string[];
+  sourceLocators:SourceReference[];
+  contentClass:ContentClass;
+  completeness:Partial<Record<HowDimension,CompletenessStatus>>;
+  gapIds:string[];
+};
+export type SourceSubStage = { title:string; locator:string; relationship:"SOURCE SUB-STAGE"|"SOURCE TERMINOLOGY"|"CONTROLLED ALIAS" };
+export type OperatingStage = {
+  canonicalStage:Extract<CanonicalLayer,"DISCOVER"|"DECIDE"|"DELIVER"|"ADOPT"|"LEARN">;
+  sourceSubStages:SourceSubStage[];
+  purpose?:string;
+  triggers?:string[];
+  inputs?:string[];
+  steps?:string[];
+  outputs?:string[];
+  source:SourceReference;
+};
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
   id:string;
@@ -52,6 +77,7 @@ export type Section = {
   contentClass?:ContentClass;
   impactSemantics?:ImpactSemantics[];
   impactValidationStatus?:ValidationStatus;
+  clientValidations?:ClientValidation[];
 };
 export type ExecutiveLayer = {
   keyFindings:string[];
@@ -75,6 +101,9 @@ export type Chapter = {
   source?:SourceReference;
   editorialNotices?:EditorialNotice[];
   clientValidations?:ClientValidation[];
+  operatingConcepts?:OperatingConcept[];
+  operatingStages?:OperatingStage[];
+  sourceOperatingSequence?:SourceSubStage[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };

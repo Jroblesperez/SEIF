@@ -5,6 +5,7 @@ const root=process.cwd();
 const chapterDir=path.join(root,"content","chapters");
 const errors=[];
 const blockAFiles=fs.readdirSync(chapterDir).filter(name=>/^0[1-9]-.*\.ts$/.test(name)).sort();
+const blockBWave1Files=fs.readdirSync(chapterDir).filter(name=>/^1[01]-.*\.ts$/.test(name)).sort();
 
 function readChapter(file){
   const source=fs.readFileSync(path.join(chapterDir,file),"utf8");
@@ -14,9 +15,10 @@ function readChapter(file){
 }
 
 const blockA=blockAFiles.map(readChapter);
+const blockBWave1=blockBWave1Files.map(readChapter);
 const legacySource=fs.readFileSync(path.join(chapterDir,"legacy.ts"),"utf8");
 const legacySlugs=[...legacySource.matchAll(/\{slug:"([^"]+)"/g)].map(match=>match[1]);
-const allSlugs=[...blockA.map(chapter=>chapter.slug),...legacySlugs];
+const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...legacySlugs];
 const slugSet=new Set();
 for(const slug of allSlugs){
   if(slugSet.has(slug))errors.push(`Duplicate slug: ${slug}`);
@@ -55,6 +57,50 @@ for(const chapter of blockA){
   }
 }
 
+for(const chapter of blockBWave1){
+  if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
+  if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
+  if(!chapter.operatingConcepts?.length)errors.push(`${chapter.slug}: missing operating concepts`);
+  for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
+  for(const section of chapter.sections){
+    if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
+    if(!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing section source locator`);
+    for(const block of section.blocks??[]){
+      const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;
+      if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);
+      if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`);
+    }
+  }
+}
+
+const designPrinciples=blockBWave1.find(chapter=>chapter.slug==="design-principles");
+const operatingModel=blockBWave1.find(chapter=>chapter.slug==="operating-model");
+if(blockBWave1Files.length!==2||!designPrinciples||!operatingModel)errors.push("Block B Wave 1 must contain exactly Chapters 10–11");
+function sourceVolume(chapter){
+  let paragraphs=0,listItems=0,tables=0;
+  for(const section of chapter?.sections??[])for(const block of section.blocks??[]){if(block.type==="paragraph")paragraphs++;else if(block.type==="list")listItems+=block.items.length;else tables++}
+  return {sections:chapter?.sections.length??0,paragraphs,listItems,tables};
+}
+const ch10Volume=sourceVolume(designPrinciples),ch11Volume=sourceVolume(operatingModel);
+if(JSON.stringify(ch10Volume)!==JSON.stringify({sections:24,paragraphs:220,listItems:46,tables:1}))errors.push(`Chapter 10 source coverage changed: ${JSON.stringify(ch10Volume)}`);
+if(JSON.stringify(ch11Volume)!==JSON.stringify({sections:46,paragraphs:594,listItems:131,tables:8}))errors.push(`Chapter 11 source coverage changed: ${JSON.stringify(ch11Volume)}`);
+const canonicalStages=operatingModel?.operatingStages?.map(stage=>stage.canonicalStage)??[];
+if(JSON.stringify(canonicalStages)!==JSON.stringify(["DISCOVER","DECIDE","DELIVER","ADOPT","LEARN"]))errors.push("operating-model: canonical loop must be DISCOVER → DECIDE → DELIVER → ADOPT → LEARN");
+const sourceSequence=operatingModel?.sourceOperatingSequence?.map(stage=>`${stage.title}:${stage.locator}`)??[];
+if(JSON.stringify(sourceSequence)!==JSON.stringify(["SIGNAL:P2872","FRAME:P2913","DISCOVER:P2929","DECIDE:P3002","VALIDATE:P3028","DELIVER:P3084","RELEASE:P3130","ADOPT:P3160","MEASURE & LEARN:P3211"]))errors.push("operating-model: original nine-stage source sequence was changed");
+const sourceStageMap=new Map((operatingModel?.operatingStages??[]).flatMap(stage=>stage.sourceSubStages.map(source=>[source.title,source.locator])));
+for(const [stage,locator] of [["SIGNAL","P2872"],["FRAME","P2913"],["DISCOVER","P2929"],["DECIDE","P3002"],["VALIDATE","P3028"],["DELIVER","P3084"],["RELEASE","P3130"],["ADOPT","P3160"],["MEASURE & LEARN","P3211"]]){
+  if(sourceStageMap.get(stage)!==locator)errors.push(`operating-model: source stage ${stage} must retain ${locator}`);
+}
+const allWave1Validations=new Set(blockBWave1.flatMap(chapter=>chapter.sections.flatMap(section=>(section.clientValidations??[]).map(item=>item.id))));
+for(const id of ["CL-04","CL-05","CL-06","CL-07","CL-08","CL-09","CL-10","CL-11","CL-12"]){if(!allWave1Validations.has(id))errors.push(`Block B Wave 1: missing contextual ${id}`)}
+const northStarCandidate=operatingModel?.operatingConcepts?.find(concept=>concept.id==="north-star-candidate");
+if(northStarCandidate?.contentClass!=="hypothesis"||!northStarCandidate.title.includes("NORTH STAR CANDIDATE")||!northStarCandidate.gapIds.includes("CL-06"))errors.push("operating-model: North Star candidate must remain H1/client validation required");
+const wipConcept=operatingModel?.operatingConcepts?.find(concept=>concept.id==="wip-management");
+if(!wipConcept?.title.includes("baseline / pilot / validate")||!wipConcept.gapIds.includes("CL-09"))errors.push("operating-model: WIP numerical limit must remain unvalidated");
+const toolingConcept=operatingModel?.operatingConcepts?.find(concept=>concept.id==="logical-tooling-model");
+if(toolingConcept?.contentClass!=="recommendation"||!toolingConcept.gapIds.includes("CL-10"))errors.push("operating-model: tooling must remain a recommendation/to validate");
+
 const maturity=blockA.find(chapter=>chapter.slug==="maturity");
 if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
 if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
@@ -86,5 +132,6 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Wave 1 source coverage: Chapter 10 ${JSON.stringify(ch10Volume)}; Chapter 11 ${JSON.stringify(ch11Volume)}.`);
 console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);
