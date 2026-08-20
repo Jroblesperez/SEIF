@@ -1,0 +1,1 @@
+export function Flow({text}:{text:string}){const parts=text.split(/\s(?:→|↺)\s/);return <div className="flow" aria-label={text}>{parts.map((p,i)=><div key={i}><span>{p}</span>{i<parts.length-1&&<b aria-hidden>→</b>}</div>)}</div>}
