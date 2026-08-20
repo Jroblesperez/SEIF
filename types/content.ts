@@ -16,6 +16,13 @@ export type EvidenceReference = {
   confidence:ReviewConfidence;
   validationStatus:ValidationStatus;
 };
+export type EditorialNotice = {
+  title:string;
+  status:"PENDING VALIDATION"|"PENDING EVIDENCE REVIEW"|"CLIENT VALIDATION REQUIRED";
+  detail:string;
+};
+export type ImpactSemantics = "OBSERVED IMPACT" | "INFERRED IMPACT" | "POTENTIAL RISK" | "UNREVIEWED";
+export type ClientValidation = { id:"CL-01"|"CL-02"|"CL-03"; subject:string; status:"CLIENT VALIDATION REQUIRED" };
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
   id:string;
@@ -43,6 +50,8 @@ export type Section = {
   evidence?:EvidenceReference[];
   sources?:SourceReference[];
   contentClass?:ContentClass;
+  impactSemantics?:ImpactSemantics[];
+  impactValidationStatus?:ValidationStatus;
 };
 export type ExecutiveLayer = {
   keyFindings:string[];
@@ -64,6 +73,8 @@ export type Chapter = {
   sections:Section[];
   related:string[];
   source?:SourceReference;
+  editorialNotices?:EditorialNotice[];
+  clientValidations?:ClientValidation[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };

@@ -1759,6 +1759,13 @@ export const chapter = {
                                      ]
                      }
                  ],
+    "clientValidations":  [
+                               {
+                                   "id":  "CL-02",
+                                   "subject":  "9 causas sistémicas probables y prioridades P1/P2",
+                                   "status":  "CLIENT VALIDATION REQUIRED"
+                               }
+                           ],
     "related":  [
                     "current-state",
                     "findings",

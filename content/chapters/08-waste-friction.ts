@@ -311,6 +311,8 @@ export const chapter = {
                          "id":  "friccion-1-demanda-heterogenea",
                          "title":  "Fricción 1 — Demanda heterogénea",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -461,6 +463,8 @@ export const chapter = {
                          "id":  "friccion-2-discovery-y-validacion-variables",
                          "title":  "Fricción 2 — Discovery y validación variables",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -594,6 +598,8 @@ export const chapter = {
                          "id":  "friccion-3-handoffs-y-perdida-de-contexto",
                          "title":  "Fricción 3 — Handoffs y pérdida de contexto",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -720,6 +726,8 @@ export const chapter = {
                          "id":  "friccion-4-retrabajo-informacional",
                          "title":  "Fricción 4 — Retrabajo informacional",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -845,6 +853,8 @@ export const chapter = {
                          "id":  "friccion-5-cambios-de-prioridad-y-context-switching",
                          "title":  "Fricción 5 — Cambios de prioridad y context switching",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["INFERRED IMPACT"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -962,6 +972,8 @@ export const chapter = {
                          "id":  "friccion-6-feedback-tardio",
                          "title":  "Fricción 6 — Feedback tardío",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["INFERRED IMPACT"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1078,6 +1090,8 @@ export const chapter = {
                          "id":  "friccion-7-dependencia-operativa-del-cliente",
                          "title":  "Fricción 7 — Dependencia operativa del cliente",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1203,6 +1217,8 @@ export const chapter = {
                          "id":  "friccion-8-senales-de-soporte-no-convertidas-sistematicamente-en-product-intelligence",
                          "title":  "Fricción 8 — Señales de Soporte no convertidas sistemáticamente en Product Intelligence",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["POTENTIAL RISK"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1320,6 +1336,8 @@ export const chapter = {
                          "id":  "friccion-9-datos-sin-mecanismo-uniforme-de-accion",
                          "title":  "Fricción 9 — Datos sin mecanismo uniforme de acción",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["INFERRED IMPACT"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1447,6 +1465,8 @@ export const chapter = {
                          "id":  "friccion-10-learning-loop-fragmentado",
                          "title":  "Fricción 10 — Learning Loop fragmentado",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["INFERRED IMPACT"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1562,6 +1582,8 @@ export const chapter = {
                          "id":  "friccion-11-deuda-tecnica-compitiendo-por-capacidad",
                          "title":  "Fricción 11 — Deuda técnica compitiendo por capacidad",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -1670,6 +1692,8 @@ export const chapter = {
                          "id":  "friccion-12-cambio-metodologico-como-fuente-de-variabilidad",
                          "title":  "Fricción 12 — Cambio metodológico como fuente de variabilidad",
                          "contentClass":  "mixed",
+                         "impactSemantics":  ["UNREVIEWED"],
+                         "impactValidationStatus":  "pending",
                          "blocks":  [
                                         {
                                             "type":  "paragraph",
@@ -2348,6 +2372,20 @@ export const chapter = {
                                      ]
                      }
                  ],
+    "editorialNotices":  [
+                              {
+                                  "title":  "Severidad: valoración del assessment — pendiente de validación",
+                                  "status":  "PENDING VALIDATION",
+                                  "detail":  "Las severidades y clasificaciones de impacto no constituyen una medición o baseline aprobado por SEIF."
+                              }
+                          ],
+    "clientValidations":  [
+                               {
+                                   "id":  "CL-03",
+                                   "subject":  "Severidad e impacto del Waste Map",
+                                   "status":  "CLIENT VALIDATION REQUIRED"
+                               }
+                           ],
     "related":  [
                     "current-state",
                     "value-stream",

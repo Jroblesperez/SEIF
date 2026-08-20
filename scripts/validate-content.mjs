@@ -26,6 +26,8 @@ if(allSlugs.length!==27)errors.push(`Expected 27 chapters, found ${allSlugs.leng
 
 const classifications=new Set(["E1","E2","E3","H1"]);
 const sourceMarks=new Set(["E","I","R","V"]);
+const structuralMarkers=new Set(["Evidencia","Interpretación","Recomendación","Evidencia SRE","Evidencia Customer Success"]);
+const evidenceCounts={E1:0,E2:0,E3:0,H1:0,unreviewedClaims:0,structuralMarkers:0,pendingValidation:0};
 for(const chapter of blockA){
   if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
   if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
@@ -33,10 +35,17 @@ for(const chapter of blockA){
   for(const section of chapter.sections){
     if(!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing section source locator`);
     for(const evidence of section.evidence??[]){
+      if(structuralMarkers.has(evidence.statement)){
+        evidenceCounts.structuralMarkers++;
+        continue;
+      }
       if(evidence.sourceMark!==null&&!sourceMarks.has(evidence.sourceMark))errors.push(`${evidence.id}: invalid source mark`);
       if(evidence.classification!==null&&!classifications.has(evidence.classification))errors.push(`${evidence.id}: invalid evidence classification`);
       if(!evidence.sourceLocator)errors.push(`${evidence.id}: missing source locator`);
       if(evidence.classification===null&&(evidence.confidence!=="unreviewed"||evidence.validationStatus!=="pending"))errors.push(`${evidence.id}: unclassified evidence must be unreviewed/pending`);
+      if(evidence.classification)evidenceCounts[evidence.classification]++;
+      else evidenceCounts.unreviewedClaims++;
+      if(evidence.validationStatus==="pending")evidenceCounts.pendingValidation++;
     }
     for(const block of section.blocks??[]){
       const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;
@@ -45,6 +54,16 @@ for(const chapter of blockA){
     }
   }
 }
+
+const maturity=blockA.find(chapter=>chapter.slug==="maturity");
+if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
+if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
+const rootCauses=blockA.find(chapter=>chapter.slug==="root-causes");
+if(!rootCauses?.clientValidations?.some(item=>item.id==="CL-02"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("root-causes: CL-02 must remain open");
+const waste=blockA.find(chapter=>chapter.slug==="waste-friction");
+if(!waste?.clientValidations?.some(item=>item.id==="CL-03"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("waste-friction: CL-03 must remain open");
+const wasteSections=waste?.sections.filter(section=>section.id.startsWith("friccion-"))??[];
+if(wasteSections.length!==12||wasteSections.some(section=>!section.impactSemantics?.length||section.impactValidationStatus!=="pending"))errors.push("waste-friction: every friction requires explicit impact semantics and pending validation");
 
 const infographicSource=fs.readFileSync(path.join(root,"content","infographics.ts"),"utf8");
 const infographicAssets=[...infographicSource.matchAll(/src:"([^"]+)"/g)].map(match=>match[1]);
@@ -67,4 +86,5 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters, ${blockAFiles.length} ingested, ${infographicAssets.length} infographics.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);

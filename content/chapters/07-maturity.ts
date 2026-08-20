@@ -1055,6 +1055,20 @@ export const chapter = {
                                      ]
                      }
                  ],
+    "editorialNotices":  [
+                              {
+                                  "title":  "Valoración del assessment — pendiente de validación",
+                                  "status":  "PENDING VALIDATION",
+                                  "detail":  "Todo score, nivel, maturity rating y perfil global de este capítulo es una valoración del assessment; no es un baseline aprobado por SEIF."
+                              }
+                          ],
+    "clientValidations":  [
+                               {
+                                   "id":  "CL-01",
+                                   "subject":  "19 dimensiones + perfil global de madurez",
+                                   "status":  "CLIENT VALIDATION REQUIRED"
+                               }
+                           ],
     "related":  [
                     "current-state",
                     "root-causes",
