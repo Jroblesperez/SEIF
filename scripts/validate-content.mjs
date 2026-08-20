@@ -11,6 +11,7 @@ const blockBWave3Files=fs.readdirSync(chapterDir).filter(name=>/^12-.*\.ts$/.tes
 const blockBWave4Files=fs.readdirSync(chapterDir).filter(name=>/^13-.*\.ts$/.test(name)).sort();
 const blockBWave5Files=fs.readdirSync(chapterDir).filter(name=>/^14-.*\.ts$/.test(name)).sort();
 const blockBWave6Files=fs.readdirSync(chapterDir).filter(name=>/^(15|16)-.*\.ts$/.test(name)).sort();
+const blockBWave7Files=fs.readdirSync(chapterDir).filter(name=>/^(18|19)-.*\.ts$/.test(name)).sort();
 
 function readChapter(file){
   const source=fs.readFileSync(path.join(chapterDir,file),"utf8");
@@ -26,9 +27,10 @@ const blockBWave3=blockBWave3Files.map(readChapter);
 const blockBWave4=blockBWave4Files.map(readChapter);
 const blockBWave5=blockBWave5Files.map(readChapter);
 const blockBWave6=blockBWave6Files.map(readChapter);
+const blockBWave7=blockBWave7Files.map(readChapter);
 const legacySource=fs.readFileSync(path.join(chapterDir,"legacy.ts"),"utf8");
 const legacySlugs=[...legacySource.matchAll(/\{slug:"([^"]+)"/g)].map(match=>match[1]);
-const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...blockBWave5.map(chapter=>chapter.slug),...blockBWave6.map(chapter=>chapter.slug),...legacySlugs];
+const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...blockBWave5.map(chapter=>chapter.slug),...blockBWave6.map(chapter=>chapter.slug),...blockBWave7.map(chapter=>chapter.slug),...legacySlugs];
 const slugSet=new Set();
 for(const slug of allSlugs){
   if(slugSet.has(slug))errors.push(`Duplicate slug: ${slug}`);
@@ -155,6 +157,14 @@ for(const chapter of blockBWave6){
       if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);
       if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`);
     }
+  }
+}
+for(const chapter of blockBWave7){
+  if(!chapter.source?.locator||!chapter.executive?.sources?.every(source=>source.locator)||!chapter.operatingConcepts?.length)errors.push(`${chapter.slug}: incomplete Wave 7 foundation`);
+  for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
+  for(const section of chapter.sections){
+    if(!section.contentClass||!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing classification or source locator`);
+    for(const block of section.blocks??[]){const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`)}
   }
 }
 
@@ -351,6 +361,53 @@ for(const [chapter,id] of [[adoption,"CL-15"],[learning,"CL-16"]]){const section
 const wave6ModelText=JSON.stringify({adoption:adoption?.adoptionConcepts,ttv:adoption?.timeToValue,growth:adoption?.growthRelationships,northStar:adoption?.northStarSupport,learning:learning?.learningConcepts,decisions:learning?.learningDecisions,tooling:[adoption?.adoptionLearningTooling,learning?.adoptionLearningTooling]});
 if(/approved North Star|official SEIF KPI|validated corporate metric|TTV SLA|Jira issue type|custom field|workflow configuration|ticket = feature/i.test(wave6ModelText))errors.push("Wave 6: unsupported North Star, TTV, ticket or tooling claim detected");
 
+const northStar=blockBWave7.find(chapter=>chapter.slug==="north-star");
+const governance=blockBWave7.find(chapter=>chapter.slug==="governance");
+if(blockBWave7Files.length!==2||!northStar||!governance)errors.push("Block B Wave 7 must contain exactly Chapters 18–19");
+const ch18Volume=sourceVolume(northStar),ch19Volume=sourceVolume(governance);
+if(JSON.stringify(ch18Volume)!==JSON.stringify({sections:60,paragraphs:698,listItems:194,tables:4}))errors.push(`Chapter 18 source coverage changed: ${JSON.stringify(ch18Volume)}`);
+if(JSON.stringify(ch19Volume)!==JSON.stringify({sections:60,paragraphs:473,listItems:234,tables:7}))errors.push(`Chapter 19 source coverage changed: ${JSON.stringify(ch19Volume)}`);
+if(northStar?.operatingConcepts?.[0]?.contentClass!=="hypothesis"||!northStar?.operatingConcepts?.[0]?.gapIds.includes("CL-06")||!northStar?.takeaway.includes("no una KPI corporativa aprobada"))errors.push("north-star: candidate must remain H1/client validation required");
+if((northStar?.northStarCriteria??[]).length!==8||(northStar?.northStarCriteria??[]).some(item=>!["SUPPORTED","PARTIAL","MISSING"].includes(item.status)))errors.push("north-star: source-supported candidate test incomplete");
+if((northStar?.northStarCriteria??[]).some(item=>"score" in item))errors.push("north-star: manufactured candidate score detected");
+if((northStar?.metricDefinitions??[]).length!==34)errors.push("north-star: metric inventory incomplete");
+const candidateMetric=northStar?.metricDefinitions?.find(item=>item.id==="customer-recurring-value");
+if(candidateMetric?.formula!=="Clientes activos con valor recurrente / clientes activos elegibles"||candidateMetric?.valueClass!=="PENDING VALIDATION"||candidateMetric?.validationStatus!=="pending")errors.push("north-star: candidate formula must remain pending, not approved policy");
+if((northStar?.metricDefinitions??[]).some(item=>item.baseline!=="SOURCE MISSING"||item.target!=="SOURCE MISSING"||item.threshold!=="SOURCE MISSING"||item.validationStatus!=="pending"))errors.push("north-star: invented baseline, target or threshold detected");
+const doraMetric=northStar?.metricDefinitions?.find(item=>item.id==="dora");
+if(!/no demuestra valor/i.test(doraMetric?.definition??"")||doraMetric?.family!=="DORA")errors.push("north-star: DORA must remain delivery health, not value");
+const flowMetric=northStar?.metricDefinitions?.find(item=>item.id==="flow");
+if(!/no productividad individual/i.test(flowMetric?.definition??""))errors.push("north-star: Flow/Throughput must not become individual productivity");
+const treeLevels=new Set((northStar?.metricTree??[]).map(item=>item.level));
+for(const level of ["NORTH STAR CANDIDATE","OUTCOME METRICS","ADOPTION METRICS","DELIVERY HEALTH","OPERATIONAL HEALTH","BUSINESS MEASURES"]){if(!treeLevels.has(level))errors.push(`north-star: metric tree missing ${level}`)}
+const northStarValidations=new Set([...(northStar?.clientValidations??[]),...(northStar?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-06","CL-07","CL-08","CL-10","CL-11","CL-17"]){if(!northStarValidations.has(id))errors.push(`north-star: missing contextual ${id}`)}
+const northStarMaturity=northStar?.sections?.find(section=>/Maturity|madurez/i.test(section.title));
+if(!northStarMaturity?.clientValidations?.some(item=>item.id==="CL-17"&&/Valoración del assessment/i.test(item.subject)))errors.push("north-star: maturity assessment requires pending validation context");
+
+if((governance?.governanceMechanisms??[]).length!==7)errors.push("governance: expected seven source-supported mechanisms");
+const reusedGovernanceRoleIds=new Set(governance?.operatingRoles?.map(role=>role.id));
+for(const role of governance?.operatingRoles??[]){if(!roleIds.has(role.id)||role.mappingStatus!=="ROLE MAPPING PENDING")errors.push(`governance: role ${role.id} must reuse Chapter 17 and remain mapping pending`)}
+if(reusedGovernanceRoleIds.size!==9)errors.push("governance: source role integration incomplete");
+if((governance?.decisionRights??[]).length!==3||(governance?.decisionRights??[]).some(item=>item.validationStatus!=="pending"||!item.source?.locator))errors.push("governance: DecisionRight integration incomplete or presented as approved authority");
+const recurrent=governance?.governanceMechanisms?.filter(item=>!item.contextual)??[],contextual=governance?.governanceMechanisms?.filter(item=>item.contextual)??[];
+if(recurrent.length!==4||contextual.length!==3)errors.push("governance: Minimum Viable Governance must retain four recurrent and three contextual reviews");
+if((governance?.governanceMechanisms??[]).some(item=>item.validationStatus!=="pending"||!item.possibleDecisions.length||!item.outputs.length))errors.push("governance: every mechanism requires decisions, outputs and pending validation");
+if(!governance?.governanceMechanisms?.find(item=>item.id==="release-review")?.purpose.match(/sin aprobación jerárquica/i))errors.push("governance: Release Review must not be hierarchical approval");
+const govLoop=(governance?.governanceConnections??[]).map(item=>`${item.from}>${item.to}:${item.status}`);
+if(JSON.stringify(govLoop)!==JSON.stringify(["EVIDENCE>REVIEW:SUPPORTED","REVIEW>DECISION:SUPPORTED","DECISION>ACTION:SUPPORTED","ACTION>NEW EVIDENCE:PARTIAL"]))errors.push("governance: evidence-to-action loop changed or was falsely closed");
+if((governance?.escalationRules??[]).length!==3||(governance?.escalationRules??[]).some(item=>item.validationStatus!=="pending"||item.timeExpectation!=="SOURCE MISSING"||!item.authority.includes("CL-05")))errors.push("governance: escalation must retain pending authority and missing time expectation");
+const govArtifacts=new Set((governance?.governanceArtifactUses??[]).map(item=>item.artifactName));
+for(const name of ["Outcome Card","Bet Card","Outcome Board","Evidence Map","Learning Card","Decision Log"]){if(!govArtifacts.has(name))errors.push(`governance: missing reused artifact ${name}`)}
+if((governance?.governanceTooling??[]).some(item=>item.validationStatus!=="pending"||!["SOURCE RECOMMENDATION","H1 / TO VALIDATE","CURRENT STATE"].includes(item.classification)))errors.push("governance: tooling promoted beyond source status");
+if((governance?.antiPatternAssessments??[]).length!==11)errors.push("governance: anti-pattern assessment incomplete");
+const governanceValidations=new Set([...(governance?.clientValidations??[]),...(governance?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-07","CL-09","CL-10","CL-11","CL-12","CL-13","CL-18"]){if(!governanceValidations.has(id))errors.push(`governance: missing contextual ${id}`)}
+const governanceMaturity=governance?.sections?.find(section=>/Maturity|madurez/i.test(section.title));
+if(!governanceMaturity?.clientValidations?.some(item=>item.id==="CL-18"&&/Valoración del assessment/i.test(item.subject)))errors.push("governance: maturity assessment requires pending validation context");
+const wave7ModelText=JSON.stringify({candidate:northStar?.operatingConcepts,metrics:northStar?.metricDefinitions,governance:governance?.governanceMechanisms,escalation:governance?.escalationRules,tooling:governance?.governanceTooling});
+if(/official SEIF KPI|approved North Star|validated corporate metric|approved committee|mandatory Jira workflow|custom field|allocation percentage|numerical WIP limit|approved authority/i.test(wave7ModelText))errors.push("Wave 7: unsupported approval, tooling, capacity, WIP or authority claim detected");
+
 const maturity=blockA.find(chapter=>chapter.slug==="maturity");
 if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
 if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
@@ -382,11 +439,12 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 + ${blockBWave5Files.length} Block B Wave 5 + ${blockBWave6Files.length} Block B Wave 6 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 + ${blockBWave5Files.length} Block B Wave 5 + ${blockBWave6Files.length} Block B Wave 6 + ${blockBWave7Files.length} Block B Wave 7 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
 console.log(`Wave 1 source coverage: Chapter 10 ${JSON.stringify(ch10Volume)}; Chapter 11 ${JSON.stringify(ch11Volume)}.`);
 console.log(`Wave 2 source coverage: Chapter 17 ${JSON.stringify(ch17Volume)}; Chapter 20 ${JSON.stringify(ch20Volume)}.`);
 console.log(`Wave 3 source coverage: Chapter 12 ${JSON.stringify(ch12Volume)}.`);
 console.log(`Wave 4 source coverage: Chapter 13 ${JSON.stringify(ch13Volume)}.`);
 console.log(`Wave 5 source coverage: Chapter 14 ${JSON.stringify(ch14Volume)}.`);
 console.log(`Wave 6 source coverage: Chapter 15 ${JSON.stringify(ch15Volume)}; Chapter 16 ${JSON.stringify(ch16Volume)}.`);
+console.log(`Wave 7 source coverage: Chapter 18 ${JSON.stringify(ch18Volume)}; Chapter 19 ${JSON.stringify(ch19Volume)}.`);
 console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);

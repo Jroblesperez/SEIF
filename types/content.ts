@@ -1,5 +1,5 @@
 export type SectionKind = "default" | "evidence" | "recommendation" | "risk" | "example" | "decision";
-export type VisualKind = "flow" | "loop" | "cards" | "timeline" | "maturity-heatmap" | "waste-friction" | "value-stream";
+export type VisualKind = "flow" | "loop" | "tree" | "cards" | "timeline" | "maturity-heatmap" | "waste-friction" | "value-stream";
 export type EvidenceClassification = "E1" | "E2" | "E3" | "H1";
 export type SourceMark = "E" | "I" | "R" | "V";
 export type ReviewConfidence = "high" | "medium" | "low" | "unreviewed";
@@ -22,7 +22,7 @@ export type EditorialNotice = {
   detail:string;
 };
 export type ImpactSemantics = "OBSERVED IMPACT" | "INFERRED IMPACT" | "POTENTIAL RISK" | "UNREVIEWED";
-export type ClientValidationId = "CL-01"|"CL-02"|"CL-03"|"CL-04"|"CL-05"|"CL-06"|"CL-07"|"CL-08"|"CL-09"|"CL-10"|"CL-11"|"CL-12"|"CL-13"|"CL-14"|"CL-15"|"CL-16";
+export type ClientValidationId = "CL-01"|"CL-02"|"CL-03"|"CL-04"|"CL-05"|"CL-06"|"CL-07"|"CL-08"|"CL-09"|"CL-10"|"CL-11"|"CL-12"|"CL-13"|"CL-14"|"CL-15"|"CL-16"|"CL-17"|"CL-18";
 export type ClientValidation = { id:ClientValidationId; subject:string; status:"CLIENT VALIDATION REQUIRED" };
 export type CanonicalLayer = "STRATEGY / OUTCOMES"|"DISCOVER"|"DECIDE"|"DELIVER"|"ADOPT"|"LEARN"|"GOVERNANCE"|"ROLES"|"METRICS"|"TOOLING / JIRA"|"EVIDENCE"|"CONTINUOUS IMPROVEMENT"|"UNMAPPED";
 export type HowDimension = "WHAT"|"WHY"|"HOW"|"WHO"|"WHEN"|"INPUT"|"OUTPUT"|"ARTIFACT"|"DECISION"|"METRIC"|"TOOL"|"EXAMPLE";
@@ -34,7 +34,7 @@ export type OperatingConcept = {
   sourceChapters:string[];
   sourceLocators:SourceReference[];
   contentClass:ContentClass;
-  completeness:Partial<Record<HowDimension|AdoptionLearningCompletenessDimension,CompletenessStatus>>;
+  completeness:Partial<Record<string,CompletenessStatus>>;
   gapIds:string[];
 };
 export type SourceSubStage = { title:string; locator:string; relationship:"SOURCE SUB-STAGE"|"SOURCE TERMINOLOGY"|"CONTROLLED ALIAS" };
@@ -436,6 +436,18 @@ export type LearningDecision = {decision:"SCALE"|"CONTINUE"|"ADJUST"|"EXPLORE"|"
 export type AdoptionLearningMetric = {name:string;metricClass:"ACTIVATION"|"TTV"|"USAGE"|"ADOPTION"|"ADHERENCE"|"AUTONOMY"|"CUSTOMER VALUE"|"RETENTION"|"EXPANSION"|"LEARNING"|"SUPPORT / FRICTION";definition:string;formula?:string;population?:string;cadence?:string;owner?:string;decisionEnabled:string;baseline:string;target:string;source:SourceReference;validationStatus:ValidationStatus};
 export type LearningCadence = {name:string;activityType:"DATA COLLECTION"|"REVIEW"|"LEARNING"|"DECISION";frequency?:string;purpose:string;source:SourceReference;validationStatus:ValidationStatus};
 export type AdoptionLearningToolReference = {tool:string;classification:"CURRENT STATE"|"RECOMMENDATION"|"H1 / TO VALIDATE";relationship:string;source:SourceReference;validationStatus:ValidationStatus};
+export type MetricCompletenessDimension = "WHAT"|"WHY"|"DEFINITION"|"FORMULA"|"POPULATION"|"DATA SOURCE"|"OWNER"|"CADENCE"|"BASELINE"|"TARGET"|"DECISION"|"BUSINESS LINKAGE";
+export type GovernanceCompletenessDimension = "WHAT"|"WHY"|"WHO"|"WHEN"|"INPUT"|"EVIDENCE"|"DECISION RIGHT"|"OUTPUT"|"ARTIFACT"|"METRIC"|"ESCALATION"|"REVISIT CONDITION"|"TOOL";
+export type NorthStarCriterion = {criterion:string;status:"SUPPORTED"|"PARTIAL"|"MISSING";rationale:string;source:SourceReference};
+export type MetricFamily = "VALUE"|"OUTCOME"|"ADOPTION"|"TTV"|"ADHERENCE"|"CUSTOMER AUTONOMY"|"RETENTION"|"EXPANSION"|"FLOW"|"DORA"|"QUALITY"|"RELIABILITY"|"DISCOVERY"|"DECISION"|"LEARNING"|"BUSINESS"|"OPERATIONAL";
+export type MetricDefinition = {id:string;name:string;family:MetricFamily;purpose:string;definition:string;formula:string;numerator:string;denominator:string;population:string;timeWindow:string;dataSource:string;owner:string;reviewCadence:string;baseline:string;target:string;threshold:string;decisionEnabled:string;indicatorType:"LEADING"|"LAGGING"|"CONTEXTUAL"|"UNCLASSIFIED";valueClass:"SOURCE FACT"|"EXAMPLE"|"ASSESSMENT VALUE"|"PROPOSED TARGET"|"PENDING VALIDATION";source:SourceReference;validationStatus:ValidationStatus;completeness:Partial<Record<MetricCompletenessDimension,CompletenessStatus>>};
+export type MetricTreeNode = {level:"NORTH STAR CANDIDATE"|"OUTCOME METRICS"|"PRODUCT SIGNALS"|"ADOPTION METRICS"|"DELIVERY HEALTH"|"OPERATIONAL HEALTH"|"BUSINESS MEASURES";metrics:string[];relationship:string;source:SourceReference};
+export type GovernanceLayer = "STRATEGIC"|"OUTCOME / PRODUCT"|"DELIVERY"|"ADOPTION / LEARNING"|"OPERATIONAL";
+export type GovernanceMechanism = {id:string;name:string;layer:GovernanceLayer;purpose:string;cadence:string;contextual:boolean;inputs:string[];evidenceReviewed:string[];participants:string[];decisionOwner?:string;possibleDecisions:string[];outputs:string[];artifactsUpdated:string[];escalation?:string;source:SourceReference;validationStatus:ValidationStatus;completeness:Partial<Record<GovernanceCompletenessDimension,CompletenessStatus>>};
+export type GovernanceConnection = {from:string;to:string;status:"SUPPORTED"|"PARTIAL"|"MISSING";rationale:string;source:SourceReference};
+export type EscalationRule = {trigger:string;destination:string;authority:string;expectedDecision:string;timeExpectation:string;source:SourceReference;validationStatus:ValidationStatus};
+export type GovernanceArtifactUse = {artifactId:string;artifactName:string;usedBy:string[];reviewedWhen:string;updatedWhen:string;decisionSupported:string;source:SourceReference};
+export type GovernanceToolReference = {tool:string;classification:"CURRENT STATE"|"SOURCE RECOMMENDATION"|"H1 / TO VALIDATE";relationship:string;source:SourceReference;validationStatus:ValidationStatus};
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
   id:string;
@@ -538,6 +550,14 @@ export type Chapter = {
   adoptionLearningMetrics?:AdoptionLearningMetric[];
   learningCadences?:LearningCadence[];
   adoptionLearningTooling?:AdoptionLearningToolReference[];
+  northStarCriteria?:NorthStarCriterion[];
+  metricDefinitions?:MetricDefinition[];
+  metricTree?:MetricTreeNode[];
+  governanceMechanisms?:GovernanceMechanism[];
+  governanceConnections?:GovernanceConnection[];
+  escalationRules?:EscalationRule[];
+  governanceArtifactUses?:GovernanceArtifactUse[];
+  governanceTooling?:GovernanceToolReference[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };
