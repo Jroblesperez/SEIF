@@ -12,6 +12,7 @@ import { chapter as designPrinciples } from "@/content/chapters/10-design-princi
 import { chapter as operatingModel } from "@/content/chapters/11-operating-model";
 import { chapter as discovery } from "@/content/chapters/12-discovery";
 import { chapter as prioritization } from "@/content/chapters/13-prioritization";
+import { chapter as delivery } from "@/content/chapters/14-delivery";
 import { chapter as roles } from "@/content/chapters/17-roles";
 import { chapter as artifacts } from "@/content/chapters/20-artifacts";
 import { legacyChapters } from "@/content/chapters/legacy";
@@ -21,8 +22,9 @@ const blockBWave1:Chapter[]=[designPrinciples,operatingModel];
 const blockBWave2:Chapter[]=[roles,artifacts];
 const blockBWave3:Chapter[]=[discovery];
 const blockBWave4:Chapter[]=[prioritization];
+const blockBWave5:Chapter[]=[delivery];
 
-export const chapters:Chapter[]=[...blockA,...blockBWave1,...blockBWave2,...blockBWave3,...blockBWave4,...legacyChapters]
+export const chapters:Chapter[]=[...blockA,...blockBWave1,...blockBWave2,...blockBWave3,...blockBWave4,...blockBWave5,...legacyChapters]
   .sort((a,b)=>Number.parseInt(a.eyebrow,10)-Number.parseInt(b.eyebrow,10));
 
 const slugs=new Set<string>();

@@ -9,6 +9,7 @@ const blockBWave1Files=fs.readdirSync(chapterDir).filter(name=>/^1[01]-.*\.ts$/.
 const blockBWave2Files=fs.readdirSync(chapterDir).filter(name=>/^(17|20)-.*\.ts$/.test(name)).sort();
 const blockBWave3Files=fs.readdirSync(chapterDir).filter(name=>/^12-.*\.ts$/.test(name)).sort();
 const blockBWave4Files=fs.readdirSync(chapterDir).filter(name=>/^13-.*\.ts$/.test(name)).sort();
+const blockBWave5Files=fs.readdirSync(chapterDir).filter(name=>/^14-.*\.ts$/.test(name)).sort();
 
 function readChapter(file){
   const source=fs.readFileSync(path.join(chapterDir,file),"utf8");
@@ -22,9 +23,10 @@ const blockBWave1=blockBWave1Files.map(readChapter);
 const blockBWave2=blockBWave2Files.map(readChapter);
 const blockBWave3=blockBWave3Files.map(readChapter);
 const blockBWave4=blockBWave4Files.map(readChapter);
+const blockBWave5=blockBWave5Files.map(readChapter);
 const legacySource=fs.readFileSync(path.join(chapterDir,"legacy.ts"),"utf8");
 const legacySlugs=[...legacySource.matchAll(/\{slug:"([^"]+)"/g)].map(match=>match[1]);
-const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...legacySlugs];
+const allSlugs=[...blockA.map(chapter=>chapter.slug),...blockBWave1.map(chapter=>chapter.slug),...blockBWave2.map(chapter=>chapter.slug),...blockBWave3.map(chapter=>chapter.slug),...blockBWave4.map(chapter=>chapter.slug),...blockBWave5.map(chapter=>chapter.slug),...legacySlugs];
 const slugSet=new Set();
 for(const slug of allSlugs){
   if(slugSet.has(slug))errors.push(`Duplicate slug: ${slug}`);
@@ -112,6 +114,21 @@ for(const chapter of blockBWave4){
   if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
   if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
   if(!chapter.operatingConcepts?.length||!chapter.decideConcepts?.length)errors.push(`${chapter.slug}: missing DECIDE operating model`);
+  for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
+  for(const section of chapter.sections){
+    if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
+    if(!section.sources?.every(source=>source.locator))errors.push(`${chapter.slug}/${section.id}: missing section source locator`);
+    for(const block of section.blocks??[]){
+      const locator=block.type==="table"?block.table.source?.locator:block.source?.locator;
+      if(!locator)errors.push(`${chapter.slug}/${section.id}: block missing source locator`);
+      if(block.type==="table"&&block.table.rows.some(row=>row.length!==block.table.headers.length))errors.push(`${block.table.id}: inconsistent row width`);
+    }
+  }
+}
+for(const chapter of blockBWave5){
+  if(!chapter.source?.locator)errors.push(`${chapter.slug}: missing chapter source locator`);
+  if(!chapter.executive?.sources?.every(source=>source.locator))errors.push(`${chapter.slug}: executive layer missing source locator`);
+  if(!chapter.operatingConcepts?.length||!chapter.deliveryConcepts?.length)errors.push(`${chapter.slug}: missing Delivery operating model`);
   for(const related of chapter.related){if(!slugSet.has(related))errors.push(`${chapter.slug}: broken related chapter ${related}`)}
   for(const section of chapter.sections){
     if(!section.contentClass)errors.push(`${chapter.slug}/${section.id}: missing content classification`);
@@ -241,6 +258,41 @@ for(const id of ["CL-05","CL-06","CL-07","CL-09","CL-10","CL-11","CL-12","CL-13"
 const prioritizationModelText=JSON.stringify({methods:prioritization?.prioritizationMethods,concepts:prioritization?.decideConcepts,rights:prioritization?.decisionRights,artifacts:prioritization?.artifactUses});
 if(/JPD project|custom field|issue type|workflow configuration|automation rule|dashboard implementation/i.test(prioritizationModelText))errors.push("prioritization: premature JPD/Jira architecture detected");
 
+const delivery=blockBWave5.find(chapter=>chapter.slug==="delivery");
+if(blockBWave5Files.length!==1||!delivery)errors.push("Block B Wave 5 must contain exactly Chapter 14");
+const ch14Volume=sourceVolume(delivery);
+if(JSON.stringify(ch14Volume)!==JSON.stringify({sections:70,paragraphs:731,listItems:203,tables:6}))errors.push(`Chapter 14 source coverage changed: ${JSON.stringify(ch14Volume)}`);
+const deliverySemantics=new Map((delivery?.deliverySemantics??[]).map(item=>[item.term,item]));
+for(const term of ["DONE","READY FOR RELEASE","RELEASED","IN PRODUCTION","AVAILABLE","ADOPTED","VALUE VALIDATED"]){if(!deliverySemantics.has(term))errors.push(`delivery: missing semantic distinction ${term}`)}
+if(deliverySemantics.get("RELEASED")?.definition===deliverySemantics.get("VALUE VALIDATED")?.definition)errors.push("delivery: Release must not equal Value Validated");
+const deliveryKinds=delivery?.deliveryConcepts?.map(concept=>concept.kind)??[];
+for(const kind of ["COMMITMENT","DELIVERY OBJECT","WORK DECOMPOSITION","VALUABLE SLICE","WORK IN PROGRESS","FLOW","DEPENDENCY","BLOCKER","QUALITY","VALIDATION","RELEASE READINESS","RELEASE","PRODUCTION","TECHNICAL FEEDBACK","POST-RELEASE OBSERVATION"]){if(!deliveryKinds.includes(kind))errors.push(`delivery: missing concept ${kind}`)}
+const commitConnections=new Map((delivery?.commitmentDeliveryConnections??[]).map(item=>[item.element,item.status]));
+for(const [name,status] of [["Decision","SUPPORTED"],["Commitment","SUPPORTED"],["Bet","SUPPORTED"],["Capacity","PARTIAL"],["Delivery Object","SUPPORTED"],["Epic / Slice / Story / Task","PARTIAL"],["Release","SUPPORTED"]]){if(commitConnections.get(name)!==status)errors.push(`delivery: commitment connection ${name} must remain ${status}`)}
+if((delivery?.deliveryObjects??[]).length!==7||(delivery?.deliveryObjects??[]).some(item=>!item.source?.locator||item.validationStatus!=="pending"))errors.push("delivery: source object inventory incomplete");
+if(delivery?.valuableSliceAssessment?.sourceStatus!=="SOURCE COMPLETE"||JSON.stringify(delivery?.valuableSliceAssessment?.optimizes)!==JSON.stringify(["VALUE","LEARNING","RISK","FLOW"]))errors.push("delivery: Valuable Slice semantics changed");
+if(delivery?.valuableSliceAssessment?.risks?.find(item=>item.risk==="Technical slicing only")?.status!=="NOT PRESENT"||delivery?.valuableSliceAssessment?.risks?.find(item=>item.risk==="Big-batch delivery")?.status!=="SOURCE RISK")errors.push("delivery: slicing risk assessment changed");
+if((delivery?.releaseDecisions??[]).length!==3||(delivery?.releaseDecisions??[]).some(item=>item.decisionOwner||item.validationStatus!=="pending"||!item.source?.locator))errors.push("delivery: release decisions must retain pending authority and source locators");
+if(JSON.stringify(delivery?.releaseDecisions??[]).match(/\bHold\b/i))errors.push("delivery: unsupported Hold release outcome detected");
+const dora=delivery?.deliveryMetrics?.filter(item=>item.metricClass==="DORA")??[];
+if(JSON.stringify(dora.map(item=>item.name))!==JSON.stringify(["Deployment Frequency","Lead Time for Changes","Change Failure Rate","Time to Restore Service (MTTR)"]))errors.push("delivery: DORA definitions changed");
+if((delivery?.deliveryMetrics??[]).length!==23||(delivery?.deliveryMetrics??[]).some(item=>item.baseline!=="SOURCE MISSING"||item.target!=="SOURCE MISSING"||item.validationStatus!=="pending"||!item.source?.locator))errors.push("delivery: metrics require source locators and missing baselines/targets");
+if(!(delivery?.deliveryMetrics??[]).every(item=>/sistema|ajustar/i.test(item.decisionEnabled)))errors.push("delivery: metrics must diagnose the system, not individuals");
+if((delivery?.deliveryCadences??[]).length!==6||(delivery?.deliveryCadences??[]).some(item=>!item.source?.locator||item.validationStatus!=="pending"))errors.push("delivery: cadence inventory incomplete");
+const adoptConnections=new Map((delivery?.releaseAdoptConnections??[]).map(item=>[item.element,item.status]));
+for(const name of ["Instrumentation","Activation measurement","Customer communication","Adoption observation","Feedback","Support signals","Learning trigger"]){if(adoptConnections.get(name)!=="SUPPORTED")errors.push(`delivery: Release → Adopt connection ${name} must remain SUPPORTED`)}
+if(adoptConnections.get("TTV")!=="PARTIAL")errors.push("delivery: TTV definition must remain PARTIAL pending Chapter 15");
+if((delivery?.deliveryTooling??[]).length!==7||(delivery?.deliveryTooling??[]).some(item=>item.classification==="CURRENT STATE"||item.validationStatus!=="pending"))errors.push("delivery: tooling must remain recommendation/H1 pending validation");
+if((delivery?.artifactUses??[]).length!==1||delivery?.artifactUses?.[0]?.artifactName!=="Bet Card / Delivery Bet"||delivery?.artifactUses?.[0]?.relationship!=="SOURCE TERMINOLOGY CONFLICT")errors.push("delivery: Chapter 14 must not invent direct artifact integrations");
+if((delivery?.antiPatternAssessments??[]).length!==15||(delivery?.antiPatternAssessments??[]).some(item=>!item.source?.locator))errors.push("delivery: anti-pattern assessment incomplete");
+for(const name of ["Release = Done","Release = Value","DORA as individual performance","Technical handoff to SRE","Quality as final-phase testing"]){if(delivery?.antiPatternAssessments?.find(item=>item.antiPattern===name)?.status!=="NOT PRESENT")errors.push(`delivery: safeguard missing for ${name}`)}
+const deliveryValidations=new Set([...(delivery?.clientValidations??[]),...(delivery?.sections??[]).flatMap(section=>section.clientValidations??[])].map(item=>item.id));
+for(const id of ["CL-04","CL-05","CL-07","CL-08","CL-09","CL-10","CL-11","CL-12","CL-14"]){if(!deliveryValidations.has(id))errors.push(`delivery: missing contextual ${id}`)}
+const deliveryMaturity=delivery?.sections?.find(section=>/Maturity|madurez/i.test(section.title));
+if(!deliveryMaturity?.clientValidations?.some(item=>item.id==="CL-14"&&/Valoración del assessment/i.test(item.subject)))errors.push("delivery: maturity rating requires pending assessment validation context");
+const deliveryModelText=JSON.stringify({objects:delivery?.deliveryObjects,concepts:delivery?.deliveryConcepts,decisions:delivery?.releaseDecisions,tooling:delivery?.deliveryTooling});
+if(/approved Jira hierarchy|mandatory workflow|custom field|issue type|quality gate approved|DORA target|individual productivity score/i.test(deliveryModelText))errors.push("delivery: unsupported Jira, workflow, quality or DORA claim detected");
+
 const maturity=blockA.find(chapter=>chapter.slug==="maturity");
 if(!maturity?.editorialNotices?.some(notice=>notice.status==="PENDING VALIDATION"&&/Valoración del assessment/i.test(notice.title)))errors.push("maturity: missing persistent assessment validation notice");
 if(!maturity?.clientValidations?.some(item=>item.id==="CL-01"&&item.status==="CLIENT VALIDATION REQUIRED"))errors.push("maturity: CL-01 must remain open");
@@ -272,9 +324,10 @@ if(errors.length){
   console.error(errors.map(error=>`- ${error}`).join("\n"));
   process.exit(1);
 }
-console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
+console.log(`Content validation passed: ${allSlugs.length} chapters/routes, ${blockAFiles.length} Block A + ${blockBWave1Files.length} Block B Wave 1 + ${blockBWave2Files.length} Block B Wave 2 + ${blockBWave3Files.length} Block B Wave 3 + ${blockBWave4Files.length} Block B Wave 4 + ${blockBWave5Files.length} Block B Wave 5 ingested, ${infographicAssets.length} infographics, 0 internal broken links.`);
 console.log(`Wave 1 source coverage: Chapter 10 ${JSON.stringify(ch10Volume)}; Chapter 11 ${JSON.stringify(ch11Volume)}.`);
 console.log(`Wave 2 source coverage: Chapter 17 ${JSON.stringify(ch17Volume)}; Chapter 20 ${JSON.stringify(ch20Volume)}.`);
 console.log(`Wave 3 source coverage: Chapter 12 ${JSON.stringify(ch12Volume)}.`);
 console.log(`Wave 4 source coverage: Chapter 13 ${JSON.stringify(ch13Volume)}.`);
+console.log(`Wave 5 source coverage: Chapter 14 ${JSON.stringify(ch14Volume)}.`);
 console.log(`Evidence counts: E1=${evidenceCounts.E1}, E2=${evidenceCounts.E2}, E3=${evidenceCounts.E3}, H1=${evidenceCounts.H1}, UNREVIEWED CLAIMS=${evidenceCounts.unreviewedClaims}, STRUCTURAL MARKERS=${evidenceCounts.structuralMarkers}, PENDING VALIDATION=${evidenceCounts.pendingValidation}.`);

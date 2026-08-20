@@ -22,7 +22,7 @@ export type EditorialNotice = {
   detail:string;
 };
 export type ImpactSemantics = "OBSERVED IMPACT" | "INFERRED IMPACT" | "POTENTIAL RISK" | "UNREVIEWED";
-export type ClientValidationId = "CL-01"|"CL-02"|"CL-03"|"CL-04"|"CL-05"|"CL-06"|"CL-07"|"CL-08"|"CL-09"|"CL-10"|"CL-11"|"CL-12"|"CL-13";
+export type ClientValidationId = "CL-01"|"CL-02"|"CL-03"|"CL-04"|"CL-05"|"CL-06"|"CL-07"|"CL-08"|"CL-09"|"CL-10"|"CL-11"|"CL-12"|"CL-13"|"CL-14";
 export type ClientValidation = { id:ClientValidationId; subject:string; status:"CLIENT VALIDATION REQUIRED" };
 export type CanonicalLayer = "STRATEGY / OUTCOMES"|"DISCOVER"|"DECIDE"|"DELIVER"|"ADOPT"|"LEARN"|"GOVERNANCE"|"ROLES"|"METRICS"|"TOOLING / JIRA"|"EVIDENCE"|"CONTINUOUS IMPROVEMENT"|"UNMAPPED";
 export type HowDimension = "WHAT"|"WHY"|"HOW"|"WHO"|"WHEN"|"INPUT"|"OUTPUT"|"ARTIFACT"|"DECISION"|"METRIC"|"TOOL"|"EXAMPLE";
@@ -283,6 +283,99 @@ export type DecisionMetric = {
   source:SourceReference;
   validationStatus:ValidationStatus;
 };
+export type DeliveryCompletenessDimension = HowDimension|"FLOW"|"QUALITY"|"RELEASE CRITERIA"|"RECOVERY"|"POST-RELEASE OBSERVATION";
+export type DeliverySemanticTerm = "DONE"|"READY FOR RELEASE"|"RELEASED"|"IN PRODUCTION"|"AVAILABLE"|"ADOPTED"|"VALUE VALIDATED";
+export type DeliverySemantic = {
+  term:DeliverySemanticTerm;
+  definition?:string;
+  sourceStatus:CompletenessStatus;
+  source?:SourceReference;
+};
+export type DeliveryConceptKind = "COMMITMENT"|"DELIVERY OBJECT"|"WORK DECOMPOSITION"|"VALUABLE SLICE"|"WORK IN PROGRESS"|"FLOW"|"DEPENDENCY"|"BLOCKER"|"QUALITY"|"VALIDATION"|"RELEASE READINESS"|"RELEASE"|"PRODUCTION"|"TECHNICAL FEEDBACK"|"POST-RELEASE OBSERVATION";
+export type DeliveryConcept = {
+  id:string;
+  kind:DeliveryConceptKind;
+  title:string;
+  what:string;
+  why:string;
+  trigger?:string;
+  inputs?:string[];
+  activities?:string[];
+  outputs?:string[];
+  participants?:string[];
+  artifacts?:string[];
+  decision?:string;
+  metric?:string;
+  cadence?:string;
+  toolRelationship?:string;
+  example?:string;
+  sourceLocators:SourceReference[];
+  contentClass:ContentClass;
+  completeness:Partial<Record<DeliveryCompletenessDimension,CompletenessStatus>>;
+};
+export type DeliveryConnection = {
+  element:string;
+  status:"SUPPORTED"|"PARTIAL"|"MISSING";
+  rationale:string;
+  source:SourceReference;
+};
+export type DeliveryObject = {
+  sourceTerm:string;
+  purpose:string;
+  parentChildRelationship?:string;
+  owner?:string;
+  lifecycle?:string[];
+  decisionRelationship?:string;
+  releaseRelationship?:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type ValuableSliceAssessment = {
+  sourceStatus:CompletenessStatus;
+  optimizes:Array<"VALUE"|"LEARNING"|"RISK"|"FLOW">;
+  definition:string;
+  risks:Array<{risk:string;status:"NOT PRESENT"|"SOURCE RISK"|"OPERATING MODEL RISK";rationale:string}>;
+  source:SourceReference;
+};
+export type DeliveryMetric = {
+  name:string;
+  metricClass:"FLOW"|"DORA"|"QUALITY"|"RELIABILITY"|"RELEASE"|"VALUE";
+  definition:string;
+  formula?:string;
+  owner?:string;
+  decisionEnabled?:string;
+  baseline:string;
+  target:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type ReleaseDecision = {
+  decision:string;
+  trigger:string;
+  inputs:string[];
+  decisionOwner?:string;
+  participants:string[];
+  criteria:string[];
+  outputs:string[];
+  evidence:string[];
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type DeliveryCadence = {
+  name:string;
+  cadenceType:"OPERATING CADENCE"|"DECISION CADENCE"|"MEETING CADENCE"|"EVENT-DRIVEN ACTIVITY";
+  purpose:string;
+  frequency?:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type DeliveryToolReference = {
+  tool:string;
+  classification:"CURRENT STATE"|"RECOMMENDATION"|"H1 / TO VALIDATE";
+  relationship:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
   id:string;
@@ -360,6 +453,16 @@ export type Chapter = {
   decisionRecord?:DecisionRecordModel;
   decisionCadences?:DecisionCadence[];
   decisionMetrics?:DecisionMetric[];
+  deliverySemantics?:DeliverySemantic[];
+  deliveryConcepts?:DeliveryConcept[];
+  commitmentDeliveryConnections?:DeliveryConnection[];
+  deliveryObjects?:DeliveryObject[];
+  valuableSliceAssessment?:ValuableSliceAssessment;
+  releaseDecisions?:ReleaseDecision[];
+  deliveryCadences?:DeliveryCadence[];
+  deliveryMetrics?:DeliveryMetric[];
+  releaseAdoptConnections?:DeliveryConnection[];
+  deliveryTooling?:DeliveryToolReference[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };
