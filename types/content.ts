@@ -184,7 +184,7 @@ export type DiscoveryCadence = {
 export type ArtifactUse = {
   artifactId:string;
   artifactName:string;
-  relationship:"CREATES"|"UPDATES"|"READS"|"SOURCE TERMINOLOGY CONFLICT";
+  relationship:"CREATES"|"UPDATES"|"READS"|"SOURCE TERMINOLOGY CONFLICT"|"INPUT TO DECISION"|"UPDATED BY DECISION"|"OUTPUT OF DECISION"|"RECORD OF DECISION";
   usage:string;
   source:SourceReference;
   validationStatus:ValidationStatus;
@@ -194,6 +194,94 @@ export type AntiPatternAssessment = {
   status:"NOT PRESENT"|"SOURCE RISK"|"OPERATING MODEL RISK";
   rationale:string;
   source:SourceReference;
+};
+export type DecideCompletenessDimension = HowDimension|"DECISION CRITERIA"|"TRADE-OFF"|"CAPACITY CONSTRAINT"|"REVISIT CONDITION"|"DECISION RECORD";
+export type DecisionSemanticTerm = "ASSESSMENT"|"PRIORITIZATION"|"RANKING"|"SEQUENCING"|"DECISION"|"COMMITMENT"|"CAPACITY ALLOCATION"|"FUNDING / INVESTMENT"|"BACKLOG ORDERING";
+export type DecisionSemantic = {
+  term:DecisionSemanticTerm;
+  definition?:string;
+  sourceStatus:CompletenessStatus;
+  source?:SourceReference;
+};
+export type DecideConceptKind = "DECISION TRIGGER"|"DECISION OBJECT"|"EVIDENCE PACKAGE"|"DECISION CRITERIA"|"EVALUATION"|"PRIORITIZATION"|"TRADE-OFF"|"CAPACITY CONSTRAINT"|"DECISION"|"COMMITMENT"|"REVISIT"|"STOP / DEFER";
+export type DecideConcept = {
+  id:string;
+  kind:DecideConceptKind;
+  title:string;
+  what:string;
+  why:string;
+  trigger?:string;
+  inputs?:string[];
+  criteria?:string[];
+  method?:string;
+  participants?:string[];
+  decisionOwner?:string;
+  outputs?:string[];
+  artifacts?:string[];
+  metric?:string;
+  cadence?:string;
+  toolRelationship?:string;
+  example?:string;
+  sourceLocators:SourceReference[];
+  contentClass:ContentClass;
+  completeness:Partial<Record<DecideCompletenessDimension,CompletenessStatus>>;
+};
+export type DecisionObject = {
+  sourceTerm:string;
+  objectType:string;
+  decisionApplied:string[];
+  artifactRelationship:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type PrioritizationMethod = {
+  name:string;
+  methodClass:"CURRENT PRACTICE"|"SOURCE RECOMMENDATION"|"H1 / PROPOSED"|"EXAMPLE"|"PENDING VALIDATION";
+  criteria?:string[];
+  scale?:string[];
+  formula?:string;
+  weights?:string[];
+  thresholds?:string[];
+  purpose:string;
+  caveat?:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type PriorityCommitmentAssessment = {
+  priorityDefinition:string;
+  executionApprovalDefinition:string;
+  capacityCommitmentDefinition:string;
+  distinctionStatus:"SUPPORTED"|"PARTIAL"|"OPERATING MODEL GAP";
+  source:SourceReference;
+};
+export type DiscoveryDecideConnection = {
+  element:string;
+  status:"SUPPORTED"|"PARTIAL"|"MISSING";
+  rationale:string;
+  source:SourceReference;
+};
+export type DecisionRecordModel = {
+  artifactName:string;
+  fields:Partial<Record<"DECISION"|"DATE / CADENCE"|"INPUTS"|"EVIDENCE"|"PARTICIPANTS"|"DECISION OWNER"|"RATIONALE"|"TRADE-OFF"|"RESULT"|"REVISIT CONDITION",CompletenessStatus>>;
+  sourceFields:string[];
+  source:SourceReference;
+};
+export type DecisionCadence = {
+  name:string;
+  cadenceType:"DECISION CADENCE"|"MEETING CADENCE"|"EVENT-DRIVEN";
+  purpose:string;
+  decisions:string[];
+  source:SourceReference;
+  validationStatus:ValidationStatus;
+};
+export type DecisionMetric = {
+  name:string;
+  metricClass:"VALUE"|"CUSTOMER"|"FLOW"|"RISK"|"EFFORT"|"FINANCIAL"|"LEARNING";
+  definition:string;
+  baseline?:string;
+  target?:string;
+  source:SourceReference;
+  validationStatus:ValidationStatus;
 };
 export type ContentTableKind = "simple" | "comparison" | "scorecard" | "maturity" | "evidence-map";
 export type ContentTable = {
@@ -263,6 +351,15 @@ export type Chapter = {
   discoveryCadences?:DiscoveryCadence[];
   artifactUses?:ArtifactUse[];
   antiPatternAssessments?:AntiPatternAssessment[];
+  decisionSemantics?:DecisionSemantic[];
+  decideConcepts?:DecideConcept[];
+  decisionObjects?:DecisionObject[];
+  prioritizationMethods?:PrioritizationMethod[];
+  priorityCommitment?:PriorityCommitmentAssessment;
+  discoveryDecideConnections?:DiscoveryDecideConnection[];
+  decisionRecord?:DecisionRecordModel;
+  decisionCadences?:DecisionCadence[];
+  decisionMetrics?:DecisionMetric[];
 };
 export type InfographicPlacement = { src:string; title:string; caption:string; chapterSlug:string; sectionId?:string };
 export type GlossaryTerm = { term:string; definition:string; why:string; example:string; related:string[] };
