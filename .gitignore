@@ -5,3 +5,4 @@ next-env.d.ts
 *.log
 *.tsbuildinfo
 .DS_Store
+source-private/
